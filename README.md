@@ -18,26 +18,12 @@ go mod download
 ```
 
 2. **Configure**
-Create `.env` file:
 ```bash
-INTERNAL_TRANSFERS_PRIMARY_ENV=production
-INTERNAL_TRANSFERS_DATABASE_HOST=your-db-host
-INTERNAL_TRANSFERS_DATABASE_PORT=5432
-INTERNAL_TRANSFERS_DATABASE_USER=your-db-user
-INTERNAL_TRANSFERS_DATABASE_PASSWORD=your-db-password
-INTERNAL_TRANSFERS_DATABASE_NAME=your-db-name
-INTERNAL_TRANSFERS_DATABASE_SSL_MODE=require
+cp env.sample .env
+# Edit .env with your database credentials
 ```
 
-Additional settings (optional):
-```bash
-INTERNAL_TRANSFERS_SERVER_PORT=8080
-INTERNAL_TRANSFERS_SERVER_READ_TIMEOUT=30
-INTERNAL_TRANSFERS_SERVER_WRITE_TIMEOUT=30
-INTERNAL_TRANSFERS_SERVER_IDLE_TIMEOUT=60
-INTERNAL_TRANSFERS_DATABASE_MAX_OPEN_CONNS=25
-INTERNAL_TRANSFERS_DATABASE_MAX_IDLE_CONNS=5
-```
+See `env.sample` for all configuration options. At minimum, update the database connection settings.
 
 3. **Run**
 ```bash
@@ -132,5 +118,6 @@ go test ./... -v
 │   ├── server/               # Server setup
 │   └── service/              # Business logic
 ├── static/                   # OpenAPI documentation
+├── env.sample               # Environment configuration template
 └── Taskfile.yml             # Task automation
 ```
