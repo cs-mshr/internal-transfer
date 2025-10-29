@@ -75,7 +75,8 @@ func (r *accountRepository) UpdateBalance(ctx context.Context, tx pgx.Tx, id int
 
 	result, err := tx.Exec(ctx, query, id, newBalance)
 	if err != nil {
-		return fmt.Errorf("failed to update account balance: %w", err)
+		// Return the error directly so it can be checked for constraint violations
+		return err
 	}
 
 	if result.RowsAffected() == 0 {
