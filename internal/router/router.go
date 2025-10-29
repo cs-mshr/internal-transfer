@@ -1,0 +1,65 @@
+package router
+
+import (
+	"net/http"
+
+	"github.com/chandra-shekhar/internal-transfers/internal/handler"
+	"github.com/chandra-shekhar/internal-transfers/internal/middleware"
+	"github.com/chandra-shekhar/internal-transfers/internal/server"
+	"github.com/chandra-shekhar/internal-transfers/internal/service"
+	"github.com/labstack/echo/v4"
+	echoMiddleware "github.com/labstack/echo/v4/middleware"
+	"golang.org/x/time/rate"
+)
+
+func NewRouter(s *server.Server, h *handler.Handlers, services *service.Services) *echo.Echo {
+	middlewares := middleware.NewMiddlewares(s)
+
+	router := echo.New()
+
+	router.HTTPErrorHandler = middlewares.Global.GlobalErrorHandler
+
+	// global middlewares
+	router.Use(
+		echoMiddleware.RateLimiterWithConfig(echoMiddleware.RateLimiterConfig{
+			Store: echoMiddleware.NewRateLimiterMemoryStore(rate.Limit(20)),
+			DenyHandler: func(c echo.Context, identifier string, err error) error {
+				// Record rate limit hit metrics
+				if rateLimitMiddleware := middlewares.RateLimit; rateLimitMiddleware != nil {
+					rateLimitMiddleware.RecordRateLimitHit(c.Path())
+				}
+
+				s.Logger.Warn().
+					Str("request_id", middleware.GetRequestID(c)).
+					Str("identifier", identifier).
+					Str("path", c.Path()).
+					Str("method", c.Request().Method).
+					Str("ip", c.RealIP()).
+					Msg("rate limit exceeded")
+
+				return echo.NewHTTPError(http.StatusTooManyRequests, "Rate limit exceeded")
+			},
+		}),
+		middlewares.Global.CORS(),
+		middlewares.Global.Secure(),
+		middleware.RequestID(),
+		middlewares.ContextEnhancer.EnhanceContext(),
+		middlewares.Global.RequestLogger(),
+		middlewares.Global.Recover(),
+	)
+
+	// register system routes
+	registerSystemRoutes(router, h)
+
+	// register versioned routes
+	v1 := router.Group("/api/v1")
+
+	// Account routes
+	v1.POST("/accounts", h.Account.CreateAccount)
+	v1.GET("/accounts/:account_id", h.Account.GetAccount)
+
+	// Transaction routes
+	v1.POST("/transactions", h.Transaction.CreateTransaction)
+
+	return router
+}
