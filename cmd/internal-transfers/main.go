@@ -16,11 +16,19 @@ import (
 	"github.com/chandra-shekhar/internal-transfers/internal/router"
 	"github.com/chandra-shekhar/internal-transfers/internal/server"
 	"github.com/chandra-shekhar/internal-transfers/internal/service"
+	"github.com/joho/godotenv"
 )
 
 const DefaultContextTimeout = 30
 
 func main() {
+	// Load .env file explicitly
+	err := godotenv.Load()
+	if err != nil {
+		// It's ok if .env doesn't exist
+		println("No .env file found, using environment variables")
+	}
+
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		panic("failed to load config: " + err.Error())

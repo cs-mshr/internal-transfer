@@ -1,5 +1,4 @@
--- +goose Up
--- +goose StatementBegin
+-- Write your migrate up statements here
 CREATE TABLE IF NOT EXISTS accounts (
     id BIGINT PRIMARY KEY,
     balance NUMERIC(20, 5) NOT NULL DEFAULT 0 CHECK (balance >= 0),
@@ -22,11 +21,11 @@ $$ language 'plpgsql';
 -- Create trigger to auto-update updated_at
 CREATE TRIGGER update_accounts_updated_at BEFORE UPDATE
     ON accounts FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
--- +goose StatementEnd
 
--- +goose Down
--- +goose StatementBegin
+---- create above / drop below ----
+
+-- Write your migrate down statements here. If this migration is irreversible
+-- Then delete the separator line above.
 DROP TRIGGER IF EXISTS update_accounts_updated_at ON accounts;
 DROP FUNCTION IF EXISTS update_updated_at_column();
 DROP TABLE IF EXISTS accounts;
--- +goose StatementEnd

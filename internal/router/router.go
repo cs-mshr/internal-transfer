@@ -7,15 +7,32 @@ import (
 	"github.com/chandra-shekhar/internal-transfers/internal/middleware"
 	"github.com/chandra-shekhar/internal-transfers/internal/server"
 	"github.com/chandra-shekhar/internal-transfers/internal/service"
+	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	echoMiddleware "github.com/labstack/echo/v4/middleware"
 	"golang.org/x/time/rate"
 )
 
+// CustomValidator wraps the validator instance
+type CustomValidator struct {
+	validator *validator.Validate
+}
+
+// Validate implements echo.Validator interface
+func (cv *CustomValidator) Validate(i interface{}) error {
+	if err := cv.validator.Struct(i); err != nil {
+		return err
+	}
+	return nil
+}
+
 func NewRouter(s *server.Server, h *handler.Handlers, services *service.Services) *echo.Echo {
 	middlewares := middleware.NewMiddlewares(s)
 
 	router := echo.New()
+
+	// Set custom validator
+	router.Validator = &CustomValidator{validator: validator.New()}
 
 	router.HTTPErrorHandler = middlewares.Global.GlobalErrorHandler
 
