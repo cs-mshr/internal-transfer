@@ -45,6 +45,23 @@ func (s *TransactionService) CreateTransaction(ctx context.Context, req *model.C
 		return nil, fmt.Errorf("source and destination accounts must be different")
 	}
 
+	// Verify accounts exist before starting transaction
+	_, err = s.accountRepo.GetByID(ctx, req.SourceAccountID)
+	if err != nil {
+		if err.Error() == "account not found" {
+			return nil, fmt.Errorf("source account not found")
+		}
+		return nil, fmt.Errorf("failed to verify source account: %w", err)
+	}
+
+	_, err = s.accountRepo.GetByID(ctx, req.DestinationAccountID)
+	if err != nil {
+		if err.Error() == "account not found" {
+			return nil, fmt.Errorf("destination account not found")
+		}
+		return nil, fmt.Errorf("failed to verify destination account: %w", err)
+	}
+
 	// Start a database transaction
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
