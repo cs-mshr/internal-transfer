@@ -92,6 +92,16 @@ go fmt ./... && go mod tidy          # Format and tidy code
 
 API docs: `http://localhost:8080/docs`
 
+## Assumptions
+
+- All accounts operate in a single currency
+- Account IDs are unique and provided by the client
+- Balance precision is maintained at 5 decimal places
+- Negative balances are not allowed
+- All transactions are processed synchronously
+- No authentication/authorization is implemented (internal service)
+- Database migrations run automatically on startup in production mode
+
 ## Key Features
 
 - Single currency, decimal precision (5 places)
@@ -104,4 +114,23 @@ API docs: `http://localhost:8080/docs`
 
 ```bash
 go test ./... -v
+```
+
+## Project Structure
+
+```
+.
+├── cmd/internal-transfers/    # Application entry point
+├── internal/
+│   ├── config/               # Configuration management
+│   ├── database/             # Database connection and migrations
+│   ├── handler/              # HTTP request handlers
+│   ├── middleware/           # HTTP middleware (logging, CORS, etc.)
+│   ├── model/                # Domain models
+│   ├── repository/           # Data access layer
+│   ├── router/               # Route definitions
+│   ├── server/               # Server setup
+│   └── service/              # Business logic
+├── static/                   # OpenAPI documentation
+└── Taskfile.yml             # Task automation
 ```
