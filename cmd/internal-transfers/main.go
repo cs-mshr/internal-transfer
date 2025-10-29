@@ -9,26 +9,17 @@ import (
 	"time"
 
 	"github.com/chandra-shekhar/internal-transfers/internal/config"
-	"github.com/chandra-shekhar/internal-transfers/internal/database"
 	"github.com/chandra-shekhar/internal-transfers/internal/handler"
 	"github.com/chandra-shekhar/internal-transfers/internal/logger"
 	"github.com/chandra-shekhar/internal-transfers/internal/repository"
 	"github.com/chandra-shekhar/internal-transfers/internal/router"
 	"github.com/chandra-shekhar/internal-transfers/internal/server"
 	"github.com/chandra-shekhar/internal-transfers/internal/service"
-	"github.com/joho/godotenv"
 )
 
 const DefaultContextTimeout = 30
 
 func main() {
-	// Load .env file explicitly
-	err := godotenv.Load()
-	if err != nil {
-		// It's ok if .env doesn't exist
-		println("No .env file found, using environment variables")
-	}
-
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		panic("failed to load config: " + err.Error())
@@ -37,12 +28,8 @@ func main() {
 	// Initialize logger
 	log := logger.NewLogger(cfg.Primary.Env)
 
-	// Run migrations in non-local environments
-	if cfg.Primary.Env != "local" {
-		if err := database.Migrate(context.Background(), &log, cfg); err != nil {
-			log.Fatal().Err(err).Msg("failed to migrate database")
-		}
-	}
+	// Note: Migrations are handled separately
+	// In production, run migrations before starting the application
 
 	// Initialize server
 	srv, err := server.New(cfg, &log)

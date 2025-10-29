@@ -12,21 +12,18 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// AccountService handles business logic for accounts
 type AccountService struct {
-	accountRepo *repository.AccountRepository
+	accountRepo repository.AccountRepository
 	logger      *zerolog.Logger
 }
 
-// NewAccountService creates a new account service
-func NewAccountService(accountRepo *repository.AccountRepository, logger *zerolog.Logger) *AccountService {
+func NewAccountService(accountRepo repository.AccountRepository, logger *zerolog.Logger) *AccountService {
 	return &AccountService{
 		accountRepo: accountRepo,
 		logger:      logger,
 	}
 }
 
-// CreateAccount creates a new account with the given ID and initial balance
 func (s *AccountService) CreateAccount(ctx context.Context, req *model.CreateAccountRequest) (*model.Account, error) {
 	// Parse the balance string to decimal
 	balance, err := decimal.NewFromString(req.InitialBalance)
@@ -59,7 +56,6 @@ func (s *AccountService) CreateAccount(ctx context.Context, req *model.CreateAcc
 	return account, nil
 }
 
-// GetAccount retrieves an account by its ID
 func (s *AccountService) GetAccount(ctx context.Context, accountID int64) (*model.AccountResponse, error) {
 	account, err := s.accountRepo.GetByID(ctx, accountID)
 	if err != nil {

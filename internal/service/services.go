@@ -13,6 +13,6 @@ type Services struct {
 func NewServices(s *server.Server, repos *repository.Repositories) *Services {
 	return &Services{
 		Account:     NewAccountService(repos.Account, s.Logger),
-		Transaction: NewTransactionService(repos.Account, repos.Transaction, s.Logger),
+		Transaction: NewTransactionService(s.DB, repos.Account, repos.Transaction, s.Logger),
 	}
 }

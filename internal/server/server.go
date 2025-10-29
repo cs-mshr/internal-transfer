@@ -15,7 +15,7 @@ import (
 type Server struct {
 	Config     *config.Config
 	Logger     *zerolog.Logger
-	DB         *database.Database
+	DB         database.DB
 	httpServer *http.Server
 }
 
