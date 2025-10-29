@@ -22,7 +22,7 @@ A high-performance internal transfers system built with Go, providing HTTP endpo
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
+git clone https://github.com/cs-mshr/internal-transfer.git
 cd internal-transfers
 ```
 
