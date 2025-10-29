@@ -1,0 +1,280 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Internal Transfers API",
+    "description": "API for internal money transfers between accounts",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080/api/v1",
+      "description": "Local development server"
+    }
+  ],
+  "paths": {
+    "/accounts": {
+      "post": {
+        "summary": "Create a new account",
+        "description": "Creates a new account with the specified ID and initial balance",
+        "tags": ["Accounts"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAccountRequest"
+              },
+              "example": {
+                "account_id": 123,
+                "initial_balance": "100.23344"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Account created successfully"
+          },
+          "400": {
+            "description": "Bad request - Invalid input data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict - Account already exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/accounts/{account_id}": {
+      "get": {
+        "summary": "Get account details",
+        "description": "Returns the account details including current balance",
+        "tags": ["Accounts"],
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "description": "The account ID",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Account details retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountResponse"
+                },
+                "example": {
+                  "account_id": 123,
+                  "balance": "100.23344"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - Invalid account ID format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Account not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/transactions": {
+      "post": {
+        "summary": "Create a new transaction",
+        "description": "Creates a new transaction to transfer money between accounts",
+        "tags": ["Transactions"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTransactionRequest"
+              },
+              "example": {
+                "source_account_id": 123,
+                "destination_account_id": 456,
+                "amount": "100.12345"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Transaction created successfully"
+          },
+          "400": {
+            "description": "Bad request - Invalid input data or insufficient balance",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Account not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CreateAccountRequest": {
+        "type": "object",
+        "required": ["account_id", "initial_balance"],
+        "properties": {
+          "account_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Unique account identifier",
+            "minimum": 1
+          },
+          "initial_balance": {
+            "type": "string",
+            "description": "Initial balance as a decimal string",
+            "pattern": "^[0-9]+(\\.[0-9]+)?$"
+          }
+        }
+      },
+      "AccountResponse": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Unique account identifier"
+          },
+          "balance": {
+            "type": "string",
+            "description": "Current balance as a decimal string"
+          }
+        }
+      },
+      "CreateTransactionRequest": {
+        "type": "object",
+        "required": ["source_account_id", "destination_account_id", "amount"],
+        "properties": {
+          "source_account_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Source account ID",
+            "minimum": 1
+          },
+          "destination_account_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Destination account ID",
+            "minimum": 1
+          },
+          "amount": {
+            "type": "string",
+            "description": "Amount to transfer as a decimal string",
+            "pattern": "^[0-9]+(\\.[0-9]+)?$"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "description": "Error code"
+              },
+              "message": {
+                "type": "string",
+                "description": "Human-readable error message"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Accounts",
+      "description": "Account management operations"
+    },
+    {
+      "name": "Transactions",
+      "description": "Transaction operations"
+    }
+  ]
+}
