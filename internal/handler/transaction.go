@@ -58,7 +58,7 @@ func (h *TransactionHandler) CreateTransaction(c echo.Context) error {
 			return h.RespondError(c, http.StatusBadRequest, "INSUFFICIENT_BALANCE", "Insufficient balance in source account")
 		}
 
-		h.Logger.Error().Err(err).Msg("failed to create transaction")
+		h.Logger.Error().Err(err).Str("error_message", err.Error()).Msg("failed to create transaction")
 		return h.RespondError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to process transaction")
 	}
 

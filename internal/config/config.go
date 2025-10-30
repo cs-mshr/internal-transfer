@@ -67,12 +67,12 @@ func LoadConfig() (*Config, error) {
 	if err != nil {
 		logger.Fatal().Err(err).Msg("could not unmarshal primary config")
 	}
-	
+
 	err = k.Unmarshal("server", &mainConfig.Server)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("could not unmarshal server config")
 	}
-	
+
 	err = k.Unmarshal("database", &mainConfig.Database)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("could not unmarshal database config")
