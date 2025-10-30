@@ -48,7 +48,13 @@ func LoadConfig() (*Config, error) {
 	k := koanf.New(".")
 
 	err := k.Load(env.Provider("INTERNAL_TRANSFERS_", ".", func(s string) string {
-		return strings.ToLower(strings.TrimPrefix(s, "INTERNAL_TRANSFERS_"))
+		result := strings.ToLower(strings.TrimPrefix(s, "INTERNAL_TRANSFERS_"))
+		// Use dots to separate namespace levels, keep underscores within field names
+		parts := strings.SplitN(result, "_", 2)
+		if len(parts) == 2 {
+			result = parts[0] + "." + parts[1]
+		}
+		return result
 	}), nil)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("could not load initial env variables")
@@ -56,9 +62,20 @@ func LoadConfig() (*Config, error) {
 
 	mainConfig := &Config{}
 
-	err = k.Unmarshal("", mainConfig)
+	// Unmarshal into nested structs separately
+	err = k.Unmarshal("primary", &mainConfig.Primary)
 	if err != nil {
-		logger.Fatal().Err(err).Msg("could not unmarshal main config")
+		logger.Fatal().Err(err).Msg("could not unmarshal primary config")
+	}
+	
+	err = k.Unmarshal("server", &mainConfig.Server)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("could not unmarshal server config")
+	}
+	
+	err = k.Unmarshal("database", &mainConfig.Database)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("could not unmarshal database config")
 	}
 
 	validate := validator.New()

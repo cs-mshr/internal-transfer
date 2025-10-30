@@ -1,5 +1,4 @@
--- +goose Up
--- +goose StatementBegin
+-- Write your migrate up statements here
 CREATE TABLE IF NOT EXISTS transactions (
     id BIGSERIAL PRIMARY KEY,
     source_account_id BIGINT NOT NULL,
@@ -21,9 +20,9 @@ CREATE INDEX idx_transactions_status ON transactions(status);
 
 -- Create composite index for common queries
 CREATE INDEX idx_transactions_accounts ON transactions(source_account_id, destination_account_id);
--- +goose StatementEnd
 
--- +goose Down
--- +goose StatementBegin
+---- create above / drop below ----
+
+-- Write your migrate down statements here. If this migration is irreversible
+-- Then delete the separator line above.
 DROP TABLE IF EXISTS transactions;
--- +goose StatementEnd

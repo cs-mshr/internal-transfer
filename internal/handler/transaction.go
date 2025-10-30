@@ -45,11 +45,14 @@ func (h *TransactionHandler) CreateTransaction(c echo.Context) error {
 		if contains(err.Error(), "invalid amount format") {
 			return h.RespondError(c, http.StatusBadRequest, "INVALID_FORMAT", "Invalid amount format")
 		}
-		if contains(err.Error(), "source account not found") {
+		if contains(err.Error(), "source account not found") || contains(err.Error(), "account with ID") && contains(err.Error(), "not found") && contains(err.Error(), "source") {
 			return h.RespondError(c, http.StatusNotFound, "SOURCE_NOT_FOUND", "Source account not found")
 		}
-		if contains(err.Error(), "destination account not found") {
+		if contains(err.Error(), "destination account not found") || contains(err.Error(), "account with ID") && contains(err.Error(), "not found") && contains(err.Error(), "destination") {
 			return h.RespondError(c, http.StatusNotFound, "DESTINATION_NOT_FOUND", "Destination account not found")
+		}
+		if contains(err.Error(), "account with ID") && contains(err.Error(), "not found") {
+			return h.RespondError(c, http.StatusNotFound, "ACCOUNT_NOT_FOUND", "Account not found")
 		}
 		if contains(err.Error(), "insufficient balance") {
 			return h.RespondError(c, http.StatusBadRequest, "INSUFFICIENT_BALANCE", "Insufficient balance in source account")
