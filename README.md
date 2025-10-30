@@ -1,6 +1,6 @@
 # Internal Transfers System
 
-A high-performance internal transfers system built with Go, providing HTTP endpoints for account management and money transfers between accounts.
+A robust financial transaction system built with Go, designed for managing accounts and processing transfers with high reliability and performance.
 
 ## Features
 
@@ -14,15 +14,15 @@ A high-performance internal transfers system built with Go, providing HTTP endpo
 
 ## Requirements
 
-- Go 1.24 or higher
-- PostgreSQL 16+
-- Make (optional, for using Taskfile)
+- Go 1.21 or higher
+- PostgreSQL 14+
+- Task (optional, for task automation)
 
 ## Installation
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/cs-mshr/internal-transfer.git
+git clone <repository-url>
 cd internal-transfers
 ```
 
@@ -31,36 +31,39 @@ cd internal-transfers
 go mod download
 ```
 
-3. Set up environment variables:
+3. Configure the application:
+
+Create a `.env` file in the project root with your database configuration:
+
 ```bash
-cp .env.sample .env
-# Edit .env with your database configuration
+# Environment
+INTERNAL_TRANSFERS_PRIMARY_ENV=production
+
+# Server Configuration  
+INTERNAL_TRANSFERS_SERVER_PORT=8080
+INTERNAL_TRANSFERS_SERVER_READ_TIMEOUT=30
+INTERNAL_TRANSFERS_SERVER_WRITE_TIMEOUT=30
+INTERNAL_TRANSFERS_SERVER_IDLE_TIMEOUT=60
+INTERNAL_TRANSFERS_SERVER_CORS_ALLOWED_ORIGINS=*
+
+# Database Configuration
+INTERNAL_TRANSFERS_DATABASE_HOST=your-db-host
+INTERNAL_TRANSFERS_DATABASE_PORT=5432
+INTERNAL_TRANSFERS_DATABASE_USER=your-db-user
+INTERNAL_TRANSFERS_DATABASE_PASSWORD=your-db-password
+INTERNAL_TRANSFERS_DATABASE_NAME=your-db-name
+INTERNAL_TRANSFERS_DATABASE_SSL_MODE=require
+INTERNAL_TRANSFERS_DATABASE_MAX_OPEN_CONNS=25
+INTERNAL_TRANSFERS_DATABASE_MAX_IDLE_CONNS=5
+INTERNAL_TRANSFERS_DATABASE_CONN_MAX_LIFETIME=300
+INTERNAL_TRANSFERS_DATABASE_CONN_MAX_IDLE_TIME=60
 ```
 
-4. Start PostgreSQL database (if not already running):
+4. Run the application:
+
+The application will automatically run database migrations on startup in non-local environments.
+
 ```bash
-# Using Docker
-docker run --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres:16
-
-# Create database
-docker exec -it postgres psql -U postgres -c "CREATE DATABASE internal_transfers;"
-```
-
-5. Run database migrations:
-```bash
-# Using task (if installed)
-task migrations:up
-
-# Or manually
-go run cmd/internal-transfers/main.go
-```
-
-6. Start the server:
-```bash
-# Using task
-task run
-
-# Or directly
 go run cmd/internal-transfers/main.go
 ```
 
@@ -116,16 +119,13 @@ The API documentation is available at:
 
 ## Configuration
 
-The application uses environment variables for configuration. Key variables:
+The application uses environment variables for configuration. All configuration options are prefixed with `INTERNAL_TRANSFERS_` and follow a hierarchical structure:
 
-- `INTERNAL_TRANSFERS_DATABASE_HOST` - PostgreSQL host (default: localhost)
-- `INTERNAL_TRANSFERS_DATABASE_PORT` - PostgreSQL port (default: 5432)
-- `INTERNAL_TRANSFERS_DATABASE_USER` - Database user (default: postgres)
-- `INTERNAL_TRANSFERS_DATABASE_PASSWORD` - Database password
-- `INTERNAL_TRANSFERS_DATABASE_NAME` - Database name (default: internal_transfers)
-- `INTERNAL_TRANSFERS_SERVER_PORT` - Server port (default: 8080)
+- Primary settings: `PRIMARY_*`
+- Server settings: `SERVER_*`
+- Database settings: `DATABASE_*`
 
-See `.env.sample` for all available configuration options.
+Refer to the `.env` template above for all available options.
 
 ## Architecture
 
@@ -165,10 +165,7 @@ golangci-lint run
 
 Migrations are located in `internal/database/migrations/` and are automatically applied on startup in non-local environments.
 
-To create a new migration:
-```bash
-task migrations:new name=your_migration_name
-```
+New migrations should be added to `internal/database/migrations/` following the naming pattern `XXX_description.sql`.
 
 ## Testing
 
@@ -182,13 +179,13 @@ For integration tests (requires database):
 go test -tags=integration ./... -v
 ```
 
-## Assumptions
+## Design Decisions
 
-- All accounts use the same currency
-- Account IDs are provided by the client
-- Decimal precision is maintained up to 5 decimal places
-- Transactions are processed synchronously
-- No authentication/authorization is implemented (as per requirements)
+- **Single Currency**: The system operates with a single currency for simplicity
+- **Client-Provided IDs**: Account IDs are provided by API clients for flexibility
+- **Decimal Precision**: All monetary values maintain 5 decimal places for accuracy
+- **Synchronous Processing**: Transactions are processed synchronously for immediate consistency
+- **Stateless API**: No authentication layer is implemented, suitable for internal microservice communication
 
 ## Performance Considerations
 
