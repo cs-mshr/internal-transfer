@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/chandra-shekhar/internal-transfers/internal/database"
 	"github.com/chandra-shekhar/internal-transfers/internal/model"
 	"github.com/chandra-shekhar/internal-transfers/internal/repository"
 	"github.com/jackc/pgx/v5"
@@ -11,23 +12,22 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// TransactionService handles business logic for transactions
 type TransactionService struct {
-	accountRepo     *repository.AccountRepository
-	transactionRepo *repository.TransactionRepository
+	db              database.DB
+	accountRepo     repository.AccountRepository
+	transactionRepo repository.TransactionRepository
 	logger          *zerolog.Logger
 }
 
-// NewTransactionService creates a new transaction service
-func NewTransactionService(accountRepo *repository.AccountRepository, transactionRepo *repository.TransactionRepository, logger *zerolog.Logger) *TransactionService {
+func NewTransactionService(db database.DB, accountRepo repository.AccountRepository, transactionRepo repository.TransactionRepository, logger *zerolog.Logger) *TransactionService {
 	return &TransactionService{
+		db:              db,
 		accountRepo:     accountRepo,
 		transactionRepo: transactionRepo,
 		logger:          logger,
 	}
 }
 
-// CreateTransaction creates a new transaction and processes the transfer
 func (s *TransactionService) CreateTransaction(ctx context.Context, req *model.CreateTransactionRequest) (*model.TransactionResponse, error) {
 	// Parse the amount
 	amount, err := decimal.NewFromString(req.Amount)
@@ -46,7 +46,7 @@ func (s *TransactionService) CreateTransaction(ctx context.Context, req *model.C
 	}
 
 	// Start a database transaction
-	tx, err := s.accountRepo.BeginTx(ctx)
+	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to begin transaction")
 		return nil, fmt.Errorf("failed to begin transaction: %w", err)
@@ -60,7 +60,13 @@ func (s *TransactionService) CreateTransaction(ctx context.Context, req *model.C
 	}()
 
 	// Create transaction record
-	transaction, err := s.transactionRepo.Create(ctx, tx, req.SourceAccountID, req.DestinationAccountID, amount)
+	transaction := &model.Transaction{
+		SourceAccountID:      req.SourceAccountID,
+		DestinationAccountID: req.DestinationAccountID,
+		Amount:               amount,
+		Status:               model.TransactionStatusPending,
+	}
+	err = s.transactionRepo.Create(ctx, tx, transaction)
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to create transaction record")
 		return nil, fmt.Errorf("failed to create transaction: %w", err)

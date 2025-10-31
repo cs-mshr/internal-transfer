@@ -5,35 +5,30 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/chandra-shekhar/internal-transfers/internal/database"
 	"github.com/chandra-shekhar/internal-transfers/internal/model"
 	"github.com/chandra-shekhar/internal-transfers/internal/server"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/shopspring/decimal"
 )
 
-// TransactionRepository handles transaction-related database operations
-type TransactionRepository struct {
-	db *pgxpool.Pool
+type transactionRepository struct {
+	db database.DB
 }
 
-// NewTransactionRepository creates a new transaction repository
-func NewTransactionRepository(s *server.Server) *TransactionRepository {
-	return &TransactionRepository{
-		db: s.DB.Pool,
+func NewTransactionRepository(s *server.Server) TransactionRepository {
+	return &transactionRepository{
+		db: s.DB,
 	}
 }
 
-// Create creates a new transaction record
-func (r *TransactionRepository) Create(ctx context.Context, tx pgx.Tx, sourceAccountID, destAccountID int64, amount decimal.Decimal) (*model.Transaction, error) {
+func (r *transactionRepository) Create(ctx context.Context, tx pgx.Tx, transaction *model.Transaction) error {
 	query := `
-		INSERT INTO transactions (source_account_id, destination_account_id, amount, status)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO transactions (source_account_id, destination_account_id, amount, status, created_at)
+		VALUES ($1, $2, $3, $4, NOW())
 		RETURNING id, source_account_id, destination_account_id, amount, status, created_at, completed_at
 	`
 
-	var transaction model.Transaction
-	err := tx.QueryRow(ctx, query, sourceAccountID, destAccountID, amount, model.TransactionStatusPending).Scan(
+	err := tx.QueryRow(ctx, query, transaction.SourceAccountID, transaction.DestinationAccountID, transaction.Amount, model.TransactionStatusPending).Scan(
 		&transaction.ID,
 		&transaction.SourceAccountID,
 		&transaction.DestinationAccountID,
@@ -43,14 +38,13 @@ func (r *TransactionRepository) Create(ctx context.Context, tx pgx.Tx, sourceAcc
 		&transaction.CompletedAt,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create transaction: %w", err)
+		return fmt.Errorf("failed to create transaction: %w", err)
 	}
 
-	return &transaction, nil
+	return nil
 }
 
-// UpdateStatus updates the status of a transaction
-func (r *TransactionRepository) UpdateStatus(ctx context.Context, tx pgx.Tx, id int64, status model.TransactionStatus) error {
+func (r *transactionRepository) UpdateStatus(ctx context.Context, tx pgx.Tx, id int64, status model.TransactionStatus) error {
 	var query string
 	var args []interface{}
 
@@ -82,8 +76,7 @@ func (r *TransactionRepository) UpdateStatus(ctx context.Context, tx pgx.Tx, id 
 	return nil
 }
 
-// GetByID retrieves a transaction by its ID
-func (r *TransactionRepository) GetByID(ctx context.Context, id int64) (*model.Transaction, error) {
+func (r *transactionRepository) GetByID(ctx context.Context, id int64) (*model.Transaction, error) {
 	query := `
 		SELECT id, source_account_id, destination_account_id, amount, status, created_at, completed_at
 		FROM transactions
@@ -111,7 +104,7 @@ func (r *TransactionRepository) GetByID(ctx context.Context, id int64) (*model.T
 }
 
 // GetByAccountID retrieves all transactions for a specific account
-func (r *TransactionRepository) GetByAccountID(ctx context.Context, accountID int64, limit, offset int) ([]*model.Transaction, error) {
+func (r *transactionRepository) GetByAccountID(ctx context.Context, accountID int64, limit, offset int) ([]*model.Transaction, error) {
 	query := `
 		SELECT id, source_account_id, destination_account_id, amount, status, created_at, completed_at
 		FROM transactions

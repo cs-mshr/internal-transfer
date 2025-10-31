@@ -11,19 +11,21 @@ import (
 	"github.com/chandra-shekhar/internal-transfers/internal/config"
 	loggerConfig "github.com/chandra-shekhar/internal-transfers/internal/logger"
 	pgxzero "github.com/jackc/pgx-zerolog"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/tracelog"
 	"github.com/rs/zerolog"
 )
 
-type Database struct {
-	Pool *pgxpool.Pool
+type postgresDB struct {
+	pool *pgxpool.Pool
 	log  *zerolog.Logger
 }
 
 const DatabasePingTimeout = 10
 
-func New(cfg *config.Config, logger *zerolog.Logger) (*Database, error) {
+func New(cfg *config.Config, logger *zerolog.Logger) (DB, error) {
 	hostPort := net.JoinHostPort(cfg.Database.Host, strconv.Itoa(cfg.Database.Port))
 
 	// URL-encode the password
@@ -62,8 +64,8 @@ func New(cfg *config.Config, logger *zerolog.Logger) (*Database, error) {
 		return nil, fmt.Errorf("failed to create pgx pool: %w", err)
 	}
 
-	database := &Database{
-		Pool: pool,
+	database := &postgresDB{
+		pool: pool,
 		log:  logger,
 	}
 
@@ -78,8 +80,32 @@ func New(cfg *config.Config, logger *zerolog.Logger) (*Database, error) {
 	return database, nil
 }
 
-func (db *Database) Close() error {
+func (db *postgresDB) Exec(ctx context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error) {
+	return db.pool.Exec(ctx, sql, arguments...)
+}
+
+func (db *postgresDB) Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error) {
+	return db.pool.Query(ctx, sql, args...)
+}
+
+func (db *postgresDB) QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row {
+	return db.pool.QueryRow(ctx, sql, args...)
+}
+
+func (db *postgresDB) Begin(ctx context.Context) (pgx.Tx, error) {
+	return db.pool.Begin(ctx)
+}
+
+func (db *postgresDB) BeginTx(ctx context.Context, txOptions pgx.TxOptions) (pgx.Tx, error) {
+	return db.pool.BeginTx(ctx, txOptions)
+}
+
+func (db *postgresDB) Ping(ctx context.Context) error {
+	return db.pool.Ping(ctx)
+}
+
+func (db *postgresDB) Close() error {
 	db.log.Info().Msg("closing database connection pool")
-	db.Pool.Close()
+	db.pool.Close()
 	return nil
 }

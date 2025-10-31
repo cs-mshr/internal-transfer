@@ -71,7 +71,7 @@ func (h *HealthHandler) checkDatabaseHealth() ComponentHealth {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := h.server.DB.Pool.Ping(ctx); err != nil {
+	if err := h.server.DB.Ping(ctx); err != nil {
 		status = "unhealthy"
 		message = fmt.Sprintf("connection failed: %s", err.Error())
 	}
