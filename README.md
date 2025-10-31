@@ -6,18 +6,31 @@ HTTP service for managing accounts and processing money transfers.
 
 - Go 1.21+
 - PostgreSQL 14+
-- Task (optional, [installation](https://taskfile.dev/installation/))
+- Task 3.x ([installation](https://taskfile.dev/installation/))
+- tern v2.x (database migration tool)
 
 ## Quick Start
 
-1. **Clone and install**
+1. **Clone and install dependencies**
 ```bash
 git clone <repository-url>
 cd internal-transfers
 go mod download
 ```
 
-2. **Configure**
+2. **Install required tools**
+```bash
+# Install Task (macOS with Homebrew)
+brew install go-task/tap/go-task
+
+# Install tern migration tool
+go install github.com/jackc/tern/v2@latest
+
+# Ensure Go binaries are in PATH
+export PATH=$PATH:~/go/bin
+```
+
+3. **Configure database**
 ```bash
 cp env.sample .env
 # Edit .env with your database credentials
@@ -25,7 +38,16 @@ cp env.sample .env
 
 See `env.sample` for all configuration options. At minimum, update the database connection settings.
 
-3. **Run**
+4. **Run database migrations**
+```bash
+# Set database connection string
+export INTERNAL_TRANSFERS_DB_DSN="postgresql://user:pass@host:port/dbname?sslmode=require"
+
+# Run migrations
+task migrations:up
+```
+
+5. **Run the application**
 ```bash
 task run
 # or without task:
@@ -68,6 +90,7 @@ task help           # Show available tasks
 task run            # Run application
 task tidy           # Format and tidy code
 task migrations:new name=<name>  # Create migration
+task migrations:up  # Apply database migrations
 ```
 
 **Without Task:**
@@ -86,7 +109,7 @@ API docs: `http://localhost:8080/docs`
 - Negative balances are not allowed
 - All transactions are processed synchronously
 - No authentication/authorization is implemented (internal service)
-- Database migrations run automatically on startup in production mode
+- Database migrations must be run manually before starting the application
 
 ## Key Features
 
@@ -94,7 +117,7 @@ API docs: `http://localhost:8080/docs`
 - ACID compliant transactions
 - Clean architecture design
 - No authentication (internal service)
-- Automatic migrations on startup
+- Manual migration management for better control
 
 ## Testing
 
