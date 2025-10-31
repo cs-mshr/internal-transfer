@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/chandra-shekhar/internal-transfers/internal/model"
 	"github.com/chandra-shekhar/internal-transfers/internal/service"
@@ -42,19 +43,16 @@ func (h *TransactionHandler) CreateTransaction(c echo.Context) error {
 		if err.Error() == "source and destination accounts must be different" {
 			return h.RespondError(c, http.StatusBadRequest, "SAME_ACCOUNT", err.Error())
 		}
-		if contains(err.Error(), "invalid amount format") {
+		if strings.Contains(err.Error(), "invalid amount format") {
 			return h.RespondError(c, http.StatusBadRequest, "INVALID_FORMAT", "Invalid amount format")
 		}
-		if contains(err.Error(), "source account not found") || contains(err.Error(), "account with ID") && contains(err.Error(), "not found") && contains(err.Error(), "source") {
+		if strings.Contains(err.Error(), "source account not found") {
 			return h.RespondError(c, http.StatusNotFound, "SOURCE_NOT_FOUND", "Source account not found")
 		}
-		if contains(err.Error(), "destination account not found") || contains(err.Error(), "account with ID") && contains(err.Error(), "not found") && contains(err.Error(), "destination") {
+		if strings.Contains(err.Error(), "destination account not found") {
 			return h.RespondError(c, http.StatusNotFound, "DESTINATION_NOT_FOUND", "Destination account not found")
 		}
-		if contains(err.Error(), "account with ID") && contains(err.Error(), "not found") {
-			return h.RespondError(c, http.StatusNotFound, "ACCOUNT_NOT_FOUND", "Account not found")
-		}
-		if contains(err.Error(), "insufficient balance") {
+		if strings.Contains(err.Error(), "insufficient balance") {
 			return h.RespondError(c, http.StatusBadRequest, "INSUFFICIENT_BALANCE", "Insufficient balance in source account")
 		}
 
