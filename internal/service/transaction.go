@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/chandra-shekhar/internal-transfers/internal/database"
+	"github.com/chandra-shekhar/internal-transfers/internal/errs"
 	"github.com/chandra-shekhar/internal-transfers/internal/model"
 	"github.com/chandra-shekhar/internal-transfers/internal/repository"
 	"github.com/jackc/pgx/v5"
@@ -37,19 +38,19 @@ func (s *TransactionService) CreateTransaction(ctx context.Context, req *model.C
 
 	// Validate amount
 	if amount.IsNegative() || amount.IsZero() {
-		return nil, fmt.Errorf("amount must be positive")
+		return nil, errs.ErrAmountMustBePositive
 	}
 
 	// Validate that source and destination are different
 	if req.SourceAccountID == req.DestinationAccountID {
-		return nil, fmt.Errorf("source and destination accounts must be different")
+		return nil, errs.ErrSameAccount
 	}
 
 	// Verify accounts exist before starting transaction
 	_, err = s.accountRepo.GetByID(ctx, req.SourceAccountID)
 	if err != nil {
 		if err.Error() == "account not found" {
-			return nil, fmt.Errorf("source account not found")
+			return nil, errs.ErrSourceAccountNotFound
 		}
 		return nil, fmt.Errorf("failed to verify source account: %w", err)
 	}
@@ -57,7 +58,7 @@ func (s *TransactionService) CreateTransaction(ctx context.Context, req *model.C
 	_, err = s.accountRepo.GetByID(ctx, req.DestinationAccountID)
 	if err != nil {
 		if err.Error() == "account not found" {
-			return nil, fmt.Errorf("destination account not found")
+			return nil, errs.ErrDestinationAccountNotFound
 		}
 		return nil, fmt.Errorf("failed to verify destination account: %w", err)
 	}
@@ -97,7 +98,7 @@ func (s *TransactionService) CreateTransaction(ctx context.Context, req *model.C
 			if updateErr != nil {
 				s.logger.Error().Err(updateErr).Msg("failed to update transaction status")
 			}
-			return nil, fmt.Errorf("source account not found")
+			return nil, errs.ErrSourceAccountNotFound
 		}
 		return nil, fmt.Errorf("failed to get source account: %w", err)
 	}
@@ -110,7 +111,7 @@ func (s *TransactionService) CreateTransaction(ctx context.Context, req *model.C
 			if updateErr != nil {
 				s.logger.Error().Err(updateErr).Msg("failed to update transaction status")
 			}
-			return nil, fmt.Errorf("destination account not found")
+			return nil, errs.ErrDestinationAccountNotFound
 		}
 		return nil, fmt.Errorf("failed to get destination account: %w", err)
 	}
@@ -121,7 +122,7 @@ func (s *TransactionService) CreateTransaction(ctx context.Context, req *model.C
 		if updateErr != nil {
 			s.logger.Error().Err(updateErr).Msg("failed to update transaction status")
 		}
-		return nil, fmt.Errorf("insufficient balance in source account")
+		return nil, errs.ErrInsufficientBalance
 	}
 
 	// Calculate new balances

@@ -3,13 +3,13 @@ package middleware
 import (
 	"net/http"
 
+	"github.com/chandra-shekhar/internal-transfers/internal/errs"
+	"github.com/chandra-shekhar/internal-transfers/internal/server"
+	"github.com/chandra-shekhar/internal-transfers/internal/sqlerr"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	"github.com/chandra-shekhar/internal-transfers/internal/errs"
-	"github.com/chandra-shekhar/internal-transfers/internal/server"
-	"github.com/chandra-shekhar/internal-transfers/internal/sqlerr"
 )
 
 type GlobalMiddlewares struct {
@@ -96,7 +96,13 @@ func (global *GlobalMiddlewares) Recover() echo.MiddlewareFunc {
 }
 
 func (global *GlobalMiddlewares) Secure() echo.MiddlewareFunc {
-	return middleware.Secure()
+	return middleware.SecureWithConfig(middleware.SecureConfig{
+		XSSProtection:         "1; mode=block",
+		ContentTypeNosniff:    "nosniff",
+		XFrameOptions:         "SAMEORIGIN",
+		HSTSMaxAge:            0,
+		ContentSecurityPolicy: "",
+	})
 }
 
 func (global *GlobalMiddlewares) GlobalErrorHandler(err error, c echo.Context) {

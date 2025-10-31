@@ -3,7 +3,9 @@ package handler
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
+	"github.com/chandra-shekhar/internal-transfers/internal/errs"
 	"github.com/chandra-shekhar/internal-transfers/internal/model"
 	"github.com/chandra-shekhar/internal-transfers/internal/service"
 	"github.com/labstack/echo/v4"
@@ -36,16 +38,14 @@ func (h *AccountHandler) CreateAccount(c echo.Context) error {
 
 	_, err := h.accountService.CreateAccount(c.Request().Context(), &req)
 	if err != nil {
-		// Check for specific errors
-		if err.Error() == "initial balance cannot be negative" {
-			return h.RespondError(c, http.StatusBadRequest, "INVALID_BALANCE", err.Error())
+		// Check for HTTPError first
+		if httpErr, ok := errs.IsHTTPError(err); ok {
+			return h.RespondError(c, httpErr.Status, httpErr.Code, httpErr.Message)
 		}
-		if err.Error() == "invalid balance format: can't convert "+req.InitialBalance+" to decimal" {
+
+		// Handle other specific errors
+		if strings.Contains(err.Error(), "invalid balance format") {
 			return h.RespondError(c, http.StatusBadRequest, "INVALID_FORMAT", "Invalid balance format")
-		}
-		// Check if account already exists
-		if contains(err.Error(), "already exists") {
-			return h.RespondError(c, http.StatusConflict, "ACCOUNT_EXISTS", err.Error())
 		}
 
 		h.Logger.Error().Err(err).Msg("failed to create account")
@@ -66,8 +66,9 @@ func (h *AccountHandler) GetAccount(c echo.Context) error {
 
 	response, err := h.accountService.GetAccount(c.Request().Context(), accountID)
 	if err != nil {
-		if contains(err.Error(), "not found") {
-			return h.RespondError(c, http.StatusNotFound, "ACCOUNT_NOT_FOUND", err.Error())
+		// Check for HTTPError first
+		if httpErr, ok := errs.IsHTTPError(err); ok {
+			return h.RespondError(c, httpErr.Status, httpErr.Code, httpErr.Message)
 		}
 
 		h.Logger.Error().Err(err).Msg("failed to get account")
@@ -75,20 +76,4 @@ func (h *AccountHandler) GetAccount(c echo.Context) error {
 	}
 
 	return h.RespondOK(c, response)
-}
-
-// Helper function to check if string contains substring
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) &&
-		(s[:len(substr)] == substr || s[len(s)-len(substr):] == substr ||
-			findSubstring(s, substr)))
-}
-
-func findSubstring(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }
