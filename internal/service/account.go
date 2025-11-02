@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/chandra-shekhar/internal-transfers/internal/errs"
 	"github.com/chandra-shekhar/internal-transfers/internal/model"
 	"github.com/chandra-shekhar/internal-transfers/internal/repository"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -33,7 +34,14 @@ func (s *AccountService) CreateAccount(ctx context.Context, req *model.CreateAcc
 
 	// Check if balance is negative
 	if balance.IsNegative() {
-		return nil, fmt.Errorf("initial balance cannot be negative")
+		return nil, errs.ErrInvalidBalance
+	}
+
+	// Check if balance exceeds maximum allowed
+	// NUMERIC(20,5) means max is 999999999999999.99999
+	maxBalance, _ := decimal.NewFromString("999999999999999.99999")
+	if balance.GreaterThan(maxBalance) {
+		return nil, errs.WrapHTTPError(errs.ErrBalanceOverflow, "initial balance exceeds maximum allowed")
 	}
 
 	// Create the account
@@ -42,7 +50,7 @@ func (s *AccountService) CreateAccount(ctx context.Context, req *model.CreateAcc
 		// Check if it's a duplicate key error
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" { // PostgreSQL unique violation code
-			return nil, fmt.Errorf("account with ID %d already exists", req.AccountID)
+			return nil, errs.WrapHTTPError(errs.ErrAccountExists, "account with ID %d already exists", req.AccountID)
 		}
 		s.logger.Error().Err(err).Int64("account_id", req.AccountID).Msg("failed to create account")
 		return nil, fmt.Errorf("failed to create account: %w", err)
@@ -60,7 +68,7 @@ func (s *AccountService) GetAccount(ctx context.Context, accountID int64) (*mode
 	account, err := s.accountRepo.GetByID(ctx, accountID)
 	if err != nil {
 		if err.Error() == "account not found" {
-			return nil, fmt.Errorf("account with ID %d not found", accountID)
+			return nil, errs.WrapHTTPError(errs.ErrAccountNotFound, "account with ID %d not found", accountID)
 		}
 		s.logger.Error().Err(err).Int64("account_id", accountID).Msg("failed to get account")
 		return nil, fmt.Errorf("failed to get account: %w", err)

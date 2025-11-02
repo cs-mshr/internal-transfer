@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/chandra-shekhar/internal-transfers/internal/errs"
 	"github.com/chandra-shekhar/internal-transfers/internal/model"
 	"github.com/chandra-shekhar/internal-transfers/internal/service"
 	"github.com/labstack/echo/v4"
@@ -36,24 +37,14 @@ func (h *TransactionHandler) CreateTransaction(c echo.Context) error {
 
 	_, err := h.transactionService.CreateTransaction(c.Request().Context(), &req)
 	if err != nil {
-		// Check for specific errors
-		if err.Error() == "amount must be positive" {
-			return h.RespondError(c, http.StatusBadRequest, "INVALID_AMOUNT", err.Error())
+		// Check for HTTPError first
+		if httpErr, ok := errs.IsHTTPError(err); ok {
+			return h.RespondError(c, httpErr.Status, httpErr.Code, httpErr.Message)
 		}
-		if err.Error() == "source and destination accounts must be different" {
-			return h.RespondError(c, http.StatusBadRequest, "SAME_ACCOUNT", err.Error())
-		}
+
+		// Handle other specific errors
 		if strings.Contains(err.Error(), "invalid amount format") {
 			return h.RespondError(c, http.StatusBadRequest, "INVALID_FORMAT", "Invalid amount format")
-		}
-		if strings.Contains(err.Error(), "source account not found") {
-			return h.RespondError(c, http.StatusNotFound, "SOURCE_NOT_FOUND", "Source account not found")
-		}
-		if strings.Contains(err.Error(), "destination account not found") {
-			return h.RespondError(c, http.StatusNotFound, "DESTINATION_NOT_FOUND", "Destination account not found")
-		}
-		if strings.Contains(err.Error(), "insufficient balance") {
-			return h.RespondError(c, http.StatusBadRequest, "INSUFFICIENT_BALANCE", "Insufficient balance in source account")
 		}
 
 		h.Logger.Error().Err(err).Str("error_message", err.Error()).Msg("failed to create transaction")

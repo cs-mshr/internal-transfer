@@ -53,7 +53,7 @@ func TestCreateAccount_InvalidBalance(t *testing.T) {
 	// Create request
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/accounts", bytes.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	
+
 	// Verify negative balance
 	assert.Equal(t, "-100.50", reqBody.InitialBalance)
 }

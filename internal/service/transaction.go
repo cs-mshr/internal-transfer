@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/chandra-shekhar/internal-transfers/internal/database"
+	"github.com/chandra-shekhar/internal-transfers/internal/errs"
 	"github.com/chandra-shekhar/internal-transfers/internal/model"
 	"github.com/chandra-shekhar/internal-transfers/internal/repository"
 	"github.com/jackc/pgx/v5"
@@ -37,19 +38,19 @@ func (s *TransactionService) CreateTransaction(ctx context.Context, req *model.C
 
 	// Validate amount
 	if amount.IsNegative() || amount.IsZero() {
-		return nil, fmt.Errorf("amount must be positive")
+		return nil, errs.ErrAmountMustBePositive
 	}
 
 	// Validate that source and destination are different
 	if req.SourceAccountID == req.DestinationAccountID {
-		return nil, fmt.Errorf("source and destination accounts must be different")
+		return nil, errs.ErrSameAccount
 	}
 
 	// Verify accounts exist before starting transaction
 	_, err = s.accountRepo.GetByID(ctx, req.SourceAccountID)
 	if err != nil {
 		if err.Error() == "account not found" {
-			return nil, fmt.Errorf("source account not found")
+			return nil, errs.ErrSourceAccountNotFound
 		}
 		return nil, fmt.Errorf("failed to verify source account: %w", err)
 	}
@@ -57,7 +58,7 @@ func (s *TransactionService) CreateTransaction(ctx context.Context, req *model.C
 	_, err = s.accountRepo.GetByID(ctx, req.DestinationAccountID)
 	if err != nil {
 		if err.Error() == "account not found" {
-			return nil, fmt.Errorf("destination account not found")
+			return nil, errs.ErrDestinationAccountNotFound
 		}
 		return nil, fmt.Errorf("failed to verify destination account: %w", err)
 	}
@@ -68,8 +69,10 @@ func (s *TransactionService) CreateTransaction(ctx context.Context, req *model.C
 		s.logger.Error().Err(err).Msg("failed to begin transaction")
 		return nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
+
+	committed := false
 	defer func() {
-		if err != nil {
+		if !committed {
 			if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
 				s.logger.Error().Err(rollbackErr).Msg("failed to rollback transaction")
 			}
@@ -89,39 +92,65 @@ func (s *TransactionService) CreateTransaction(ctx context.Context, req *model.C
 		return nil, fmt.Errorf("failed to create transaction: %w", err)
 	}
 
-	// Lock and get source account (with FOR UPDATE to prevent concurrent modifications)
-	sourceAccount, err := s.accountRepo.GetByIDForUpdate(ctx, tx, req.SourceAccountID)
-	if err != nil {
-		if err.Error() == "account not found" {
-			updateErr := s.transactionRepo.UpdateStatus(ctx, tx, transaction.ID, model.TransactionStatusFailed)
-			if updateErr != nil {
-				s.logger.Error().Err(updateErr).Msg("failed to update transaction status")
+	// Lock accounts in consistent order (by ID) to prevent deadlocks
+	// Always lock the lower ID first, then the higher ID
+	var firstAccount, secondAccount *model.Account
+	var firstIsSource bool
+
+	if req.SourceAccountID < req.DestinationAccountID {
+		firstIsSource = true
+		firstAccount, err = s.accountRepo.GetByIDForUpdate(ctx, tx, req.SourceAccountID)
+		if err != nil {
+			if err.Error() == "account not found" {
+				s.transactionRepo.UpdateStatus(ctx, tx, transaction.ID, model.TransactionStatusFailed)
+				return nil, errs.ErrSourceAccountNotFound
 			}
-			return nil, fmt.Errorf("source account not found")
+			return nil, fmt.Errorf("failed to get source account: %w", err)
 		}
-		return nil, fmt.Errorf("failed to get source account: %w", err)
+
+		secondAccount, err = s.accountRepo.GetByIDForUpdate(ctx, tx, req.DestinationAccountID)
+		if err != nil {
+			if err.Error() == "account not found" {
+				s.transactionRepo.UpdateStatus(ctx, tx, transaction.ID, model.TransactionStatusFailed)
+				return nil, errs.ErrDestinationAccountNotFound
+			}
+			return nil, fmt.Errorf("failed to get destination account: %w", err)
+		}
+	} else {
+		firstIsSource = false
+		firstAccount, err = s.accountRepo.GetByIDForUpdate(ctx, tx, req.DestinationAccountID)
+		if err != nil {
+			if err.Error() == "account not found" {
+				s.transactionRepo.UpdateStatus(ctx, tx, transaction.ID, model.TransactionStatusFailed)
+				return nil, errs.ErrDestinationAccountNotFound
+			}
+			return nil, fmt.Errorf("failed to get destination account: %w", err)
+		}
+
+		secondAccount, err = s.accountRepo.GetByIDForUpdate(ctx, tx, req.SourceAccountID)
+		if err != nil {
+			if err.Error() == "account not found" {
+				s.transactionRepo.UpdateStatus(ctx, tx, transaction.ID, model.TransactionStatusFailed)
+				return nil, errs.ErrSourceAccountNotFound
+			}
+			return nil, fmt.Errorf("failed to get source account: %w", err)
+		}
 	}
 
-	// Lock and get destination account
-	destAccount, err := s.accountRepo.GetByIDForUpdate(ctx, tx, req.DestinationAccountID)
-	if err != nil {
-		if err.Error() == "account not found" {
-			updateErr := s.transactionRepo.UpdateStatus(ctx, tx, transaction.ID, model.TransactionStatusFailed)
-			if updateErr != nil {
-				s.logger.Error().Err(updateErr).Msg("failed to update transaction status")
-			}
-			return nil, fmt.Errorf("destination account not found")
-		}
-		return nil, fmt.Errorf("failed to get destination account: %w", err)
+	// Assign source and destination based on the original request
+	var sourceAccount, destAccount *model.Account
+	if firstIsSource {
+		sourceAccount = firstAccount
+		destAccount = secondAccount
+	} else {
+		sourceAccount = secondAccount
+		destAccount = firstAccount
 	}
 
 	// Check if source account has sufficient balance
 	if sourceAccount.Balance.LessThan(amount) {
-		updateErr := s.transactionRepo.UpdateStatus(ctx, tx, transaction.ID, model.TransactionStatusFailed)
-		if updateErr != nil {
-			s.logger.Error().Err(updateErr).Msg("failed to update transaction status")
-		}
-		return nil, fmt.Errorf("insufficient balance in source account")
+		s.transactionRepo.UpdateStatus(ctx, tx, transaction.ID, model.TransactionStatusFailed)
+		return nil, errs.ErrInsufficientBalance
 	}
 
 	// Calculate new balances
@@ -151,6 +180,7 @@ func (s *TransactionService) CreateTransaction(ctx context.Context, req *model.C
 		s.logger.Error().Err(err).Msg("failed to commit transaction")
 		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
+	committed = true
 
 	s.logger.Info().
 		Int64("transaction_id", transaction.ID).
