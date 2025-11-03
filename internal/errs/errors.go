@@ -77,6 +77,41 @@ var (
 		Status:   http.StatusBadRequest,
 		Override: false,
 	}
+
+	ErrInvalidFormat = &HTTPError{
+		Code:     "INVALID_FORMAT",
+		Message:  "Invalid format",
+		Status:   http.StatusBadRequest,
+		Override: false,
+	}
+
+	ErrInternalError = &HTTPError{
+		Code:     "INTERNAL_ERROR",
+		Message:  "Internal server error",
+		Status:   http.StatusInternalServerError,
+		Override: false,
+	}
+
+	ErrInvalidAccountID = &HTTPError{
+		Code:     "INVALID_ACCOUNT_ID",
+		Message:  "Invalid account ID format",
+		Status:   http.StatusBadRequest,
+		Override: false,
+	}
+
+	ErrInvalidRequest = &HTTPError{
+		Code:     "INVALID_REQUEST",
+		Message:  "Invalid request format",
+		Status:   http.StatusBadRequest,
+		Override: false,
+	}
+
+	ErrValidationError = &HTTPError{
+		Code:     "VALIDATION_ERROR",
+		Message:  "Request validation failed",
+		Status:   http.StatusBadRequest,
+		Override: false,
+	}
 )
 
 // IsHTTPError checks if an error is an HTTPError
