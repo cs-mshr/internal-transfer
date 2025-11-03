@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 
+	"github.com/chandra-shekhar/internal-transfers/internal/errs"
 	"github.com/chandra-shekhar/internal-transfers/internal/server"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
@@ -38,10 +39,15 @@ func (h *BaseHandler) RespondError(c echo.Context, statusCode int, errorCode, me
 	})
 }
 
+// RespondWithHTTPError sends an error response using an HTTPError
+func (h *BaseHandler) RespondWithHTTPError(c echo.Context, httpErr *errs.HTTPError) error {
+	return h.RespondError(c, httpErr.Status, httpErr.Code, httpErr.Message)
+}
+
 // HandleBindError handles request binding errors
 func (h *BaseHandler) HandleBindError(c echo.Context, err error) error {
 	h.Logger.Error().Err(err).Msg("failed to bind request")
-	return h.RespondError(c, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request format")
+	return h.RespondWithHTTPError(c, errs.ErrInvalidRequest)
 }
 
 // HandleValidationError handles validation errors
@@ -71,9 +77,9 @@ func (h *BaseHandler) HandleValidationError(c echo.Context, err error) error {
 				message = field + " is invalid"
 			}
 
-			return h.RespondError(c, http.StatusBadRequest, "VALIDATION_ERROR", message)
+			return h.RespondWithHTTPError(c, errs.ErrValidationError.WithMessage(message))
 		}
 	}
 
-	return h.RespondError(c, http.StatusBadRequest, "VALIDATION_ERROR", "Request validation failed")
+	return h.RespondWithHTTPError(c, errs.ErrValidationError)
 }

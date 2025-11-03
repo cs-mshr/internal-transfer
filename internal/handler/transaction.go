@@ -39,16 +39,16 @@ func (h *TransactionHandler) CreateTransaction(c echo.Context) error {
 	if err != nil {
 		// Check for HTTPError first
 		if httpErr, ok := errs.IsHTTPError(err); ok {
-			return h.RespondError(c, httpErr.Status, httpErr.Code, httpErr.Message)
+			return h.RespondWithHTTPError(c, httpErr)
 		}
 
 		// Handle other specific errors
 		if strings.Contains(err.Error(), "invalid amount format") {
-			return h.RespondError(c, http.StatusBadRequest, "INVALID_FORMAT", "Invalid amount format")
+			return h.RespondWithHTTPError(c, errs.ErrInvalidFormat.WithMessage("Invalid amount format"))
 		}
 
 		h.Logger.Error().Err(err).Str("error_message", err.Error()).Msg("failed to create transaction")
-		return h.RespondError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to process transaction")
+		return h.RespondWithHTTPError(c, errs.ErrInternalError.WithMessage("Failed to process transaction"))
 	}
 
 	// Return empty response on success as per requirement

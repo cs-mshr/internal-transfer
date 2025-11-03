@@ -40,16 +40,16 @@ func (h *AccountHandler) CreateAccount(c echo.Context) error {
 	if err != nil {
 		// Check for HTTPError first
 		if httpErr, ok := errs.IsHTTPError(err); ok {
-			return h.RespondError(c, httpErr.Status, httpErr.Code, httpErr.Message)
+			return h.RespondWithHTTPError(c, httpErr)
 		}
 
 		// Handle other specific errors
 		if strings.Contains(err.Error(), "invalid balance format") {
-			return h.RespondError(c, http.StatusBadRequest, "INVALID_FORMAT", "Invalid balance format")
+			return h.RespondWithHTTPError(c, errs.ErrInvalidFormat.WithMessage("Invalid balance format"))
 		}
 
 		h.Logger.Error().Err(err).Msg("failed to create account")
-		return h.RespondError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to create account")
+		return h.RespondWithHTTPError(c, errs.ErrInternalError.WithMessage("Failed to create account"))
 	}
 
 	// Return empty response on success as per requirement
@@ -61,18 +61,18 @@ func (h *AccountHandler) GetAccount(c echo.Context) error {
 	accountIDStr := c.Param("account_id")
 	accountID, err := strconv.ParseInt(accountIDStr, 10, 64)
 	if err != nil {
-		return h.RespondError(c, http.StatusBadRequest, "INVALID_ACCOUNT_ID", "Invalid account ID format")
+		return h.RespondWithHTTPError(c, errs.ErrInvalidAccountID)
 	}
 
 	response, err := h.accountService.GetAccount(c.Request().Context(), accountID)
 	if err != nil {
 		// Check for HTTPError first
 		if httpErr, ok := errs.IsHTTPError(err); ok {
-			return h.RespondError(c, httpErr.Status, httpErr.Code, httpErr.Message)
+			return h.RespondWithHTTPError(c, httpErr)
 		}
 
 		h.Logger.Error().Err(err).Msg("failed to get account")
-		return h.RespondError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to get account")
+		return h.RespondWithHTTPError(c, errs.ErrInternalError.WithMessage("Failed to get account"))
 	}
 
 	return h.RespondOK(c, response)
